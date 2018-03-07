@@ -1,0 +1,72 @@
+pragma solidity ^0.4.20;
+
+contract OffChainDebts {
+    mapping (address => uint) private oneMansDebt;
+    
+    address owner = msg.sender;
+    
+    event Borrowed(address debtor, uint amountBorrowed);
+    event Repayed(address debtor,  uint amountRepayed, uint debtIs);
+    event Error(string message);
+    
+    
+    function borrow (uint amountBorrowed) public  returns (bool) {
+        
+        if(msg.sender == owner) {
+            Error("Borrowing to yourself is not possible");
+            return false;
+        }
+        if (checkForValidAmount(amountBorrowed + oneMansDebt[msg.sender])) {
+            if(oneMansDebt[msg.sender] + amountBorrowed > 2^256 - 1)
+        oneMansDebt[msg.sender] += amountBorrowed;
+        Borrowed(msg.sender, amountBorrowed);
+        return true;
+        }
+        Error("Does not work that way! Total debt is greater than unsigned integer256");
+        return false;
+    }
+    
+    
+    function repay (address debterAddress, uint amountRepayed) public returns (bool)  {
+        
+            if (msg.sender == owner) {
+                if (checkForValidAmount(amountRepayed)) {
+                    if (amountRepayed <= oneMansDebt[debterAddress]) {
+                    oneMansDebt[debterAddress] -= amountRepayed;
+                    Repayed(debterAddress, amountRepayed, oneMansDebt[debterAddress]);
+                    return true;
+                    } else if (amountRepayed > oneMansDebt[debterAddress]) {
+                    uint debtWas = oneMansDebt[debterAddress];
+                    oneMansDebt[debterAddress] = 0; 
+                    Repayed(debterAddress, debtWas, 0);
+                    return true;
+                    } else {
+                    Error("Does not work that way! Pass unsigned integer256 value");
+                    return false;
+                    }
+                }
+                Error("Invalid amount");
+                return false;
+        }
+        Error("You are not this contract's owner. Have to be one to perform repay");
+        return false;
+    }
+    
+    
+    function checkDebt() public view returns (uint) {
+        
+        if (oneMansDebt[msg.sender] != 0) {
+            return oneMansDebt[msg.sender];
+        } else {
+            Error("No debt for this address");
+        }
+        
+    } 
+    
+    function checkForValidAmount(uint amount) private returns (bool) {
+        if (amount > 0 && amount < 2^256 - 1) {
+            return true;
+        }
+        else return false;
+    }
+}
