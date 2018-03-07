@@ -3,6 +3,8 @@ pragma solidity ^0.4.20;
 contract OffChainDebts {
     mapping (address => uint) private oneMansDebt;
     
+    //x = MyStruct({a: 1, b: 2});
+    
     address owner = msg.sender;
     
     event Borrowed(address debtor, uint amountBorrowed);
@@ -10,13 +12,19 @@ contract OffChainDebts {
     event Error(string message);
     
     
-    function borrow (uint amountBorrowed) public  returns (bool) {
+    function typeCheck () returns (uint) {
+        uint128 a = 1;
+        uint128 b = 2 + a +  5;
+        return b;
+    }
+    
+    function borrow (uint amountBorrowed) public returns (bool) {
         
         if(msg.sender == owner) {
             Error("Borrowing to yourself is not possible");
             return false;
         }
-        if (checkForValidAmount(amountBorrowed + oneMansDebt[msg.sender])) {
+        if (amountIsValid(amountBorrowed + oneMansDebt[msg.sender])) {
             if(oneMansDebt[msg.sender] + amountBorrowed > 2^256 - 1)
         oneMansDebt[msg.sender] += amountBorrowed;
         Borrowed(msg.sender, amountBorrowed);
@@ -27,10 +35,9 @@ contract OffChainDebts {
     }
     
     
-    function repay (address debterAddress, uint amountRepayed) public returns (bool)  {
+    function repay (address debterAddress, uint amountRepayed) public onlyOwner returns (bool)  {
         
-            if (msg.sender == owner) {
-                if (checkForValidAmount(amountRepayed)) {
+                if (amountIsValid(amountRepayed)) {
                     if (amountRepayed <= oneMansDebt[debterAddress]) {
                     oneMansDebt[debterAddress] -= amountRepayed;
                     Repayed(debterAddress, amountRepayed, oneMansDebt[debterAddress]);
@@ -47,9 +54,7 @@ contract OffChainDebts {
                 }
                 Error("Invalid amount");
                 return false;
-        }
-        Error("You are not this contract's owner. Have to be one to perform repay");
-        return false;
+        
     }
     
     
@@ -57,16 +62,21 @@ contract OffChainDebts {
         
         if (oneMansDebt[msg.sender] != 0) {
             return oneMansDebt[msg.sender];
-        } else {
-            Error("No debt for this address");
-        }
+        } 
+        Error("No debt for this address");
         
     } 
     
-    function checkForValidAmount(uint amount) private returns (bool) {
-        if (amount > 0 && amount < 2^256 - 1) {
+    function amountIsValid(uint amount) private pure returns (bool) {
+        if (amount > 0 && amount < 2**256 - 1) {
+            //Error("Why this does not work?");
             return true;
         }
         else return false;
+    }
+    
+    modifier onlyOwner {
+        require(msg.sender == owner);
+        _;
     }
 }
